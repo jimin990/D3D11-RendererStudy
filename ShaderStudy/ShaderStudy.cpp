@@ -3,11 +3,20 @@
 #include <d3d11.h>
 #include <d3dcompiler.h>
 #include <cstring>
+#include <vector>
+#include "Renderer.h"
 
 /* ComPtr을 사용하기 위한 헤더
 *  Comptr은 DirectX 객체를 관리하는 스마트 포인터이다.
 */
 #include <wrl/client.h>
+
+/*
+* 윈도우에서 제공하는 이미지 디코딩 라이브러리
+*/
+#include <wincodec.h>
+
+#pragma comment(lib, "windowscodecs.lib")
 
 /*
 * 링커에게 d3d11.lib 라이브러리 연결을 지시한다.
@@ -22,7 +31,8 @@ using Microsoft::WRL::ComPtr;
 struct Vertex
 {
     float x, y, z; // 위치
-    float r, g, b; // 색
+    //float r, g, b; // 색
+    float u, v; // uv로 변경
 };
 
 /*
@@ -33,49 +43,6 @@ struct TransformData
 {
     float scale;
     float padding[3];
-};
-
-// D3D11 객체들 분리
-struct Renderer {
-    /*
-    * 필요한 자원을 만든다. 예) 버퍼, 셰이더, RTV 생성
-    */
-    ComPtr<ID3D11Device> device;
-
-    /*
-    * 그린 화면을 창에 표기하기 위한 버퍼들을 관리하는 객체
-    * 백버퍼를 관리하고, 완성된 화면을 표시하도록 처리하는 객체
-    *
-    */
-    ComPtr<IDXGISwapChain> swapChain;
-
-    /*
-    * 백버퍼를 가르킬 스마트 포인터, 백버퍼는 2차원 이미지 자원이다.
-    */
-    ComPtr<ID3D11Texture2D> backBuffer;
-
-    /*
-    * 자원을 연결하고 작업을 요청한다.
-    */
-    ComPtr<ID3D11DeviceContext> context;
-
-    /*
-    * 입력 레이아웃이란 버텍스 버퍼의 데이터를 어떻게 나눠 읽어서 셰이더에 전달할지 설명서이다.
-    */
-    ComPtr<ID3D11InputLayout> inputLayout;
-
-    /*
-    * 컴파일된 셰이더 코드
-    */
-    ComPtr<ID3DBlob> vertexShaderCode;
-
-    ComPtr<ID3DBlob> pixelShaderCode;
-
-    /*
-    * RTV를 가르킬 스마트 포인터
-    * RTV란 그 공간을 렌더링 출력 대상으로 사용하기 위한 뷰이다.
-    */
-    ComPtr<ID3D11RenderTargetView> renderTarget;
 };
 
 /*
@@ -181,8 +148,8 @@ int WINAPI wWinMain(
         WS_OVERLAPPEDWINDOW,    // 일반적인 데스크톱 창 스타일
         CW_USEDEFAULT,          // 시작 X 위치
         CW_USEDEFAULT,          // 시작 Y 위치
-        1000,                    // 창 전체 너비
-        1000,                    // 창 전체 높이
+        800,                    // 창 전체 너비
+        600,                    // 창 전체 높이
         nullptr,                // 부모 창 없음
         nullptr,                // 메뉴 없음
         instance,               // 프로그램 모듈 핸들
@@ -207,87 +174,194 @@ int WINAPI wWinMain(
 
     Renderer renderer{};
 
+    renderer.Initialize(hwnd);
+
+    /*-------------------------------------여기부터 WIC 설정------------------------------*/
     /*
-    * SwapChain의 설명서, DESC는 Description을 줄임말
-    * 여기서 DXGI란 DirectX Graphics Infrastructure를 의미한다.
-    * 그래픽 장치와 화면 출력 관련 기능을 담당.
-    * Direct3D는 그리기를 담당하고, DXGI는 그 결과를 창에 표시하는 쪽을 담당한다
+    * WIC(Window Imaging Component)란
+    * Windows에서 제공하는 WIC관련 선언들이 들어 있는 헤더이다.
+    * WIC란 PNG, JPG 같은 이미지 파일을 읽어서 실제 픽셀 데이터로 변환하는 Windows 기능이다.
+    * PNG나 JPG는 압축된 이미지 포맷이기 때문에 압축을 해제하고, 해석하는 과정이 필요한데
+    * 이 과정을 처리해주는 기능을 제공해주는 라이브러리이다.
     */
-    DXGI_SWAP_CHAIN_DESC desc{};
 
     /*
-    * 그림을 담을 버퍼의 크기 지정
+    * 우선 이 부분은 패스, WIC는 Component Object Model 기반이라 Com을 초기화한다고 기억
     */
-    desc.BufferDesc.Width = 800;
-    desc.BufferDesc.Height = 600;
+    CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 
     /*
-    * 픽셀 하나에 색상을 어떻게 지정할 지 지정
-    * R8: 빨강 8비트
-    * G8: 초록 8비트
-    * B8: 파랑 8비트
-    * A8: 알파 8비트
-    * UNORM: 저장된 정수값을 사용할때 0~1범위로 해석
-    *
-    * 8 * 4 = 32비트, 즉 4바이트를 사용한다.
+    * WIC 객체들을 만들어주는 Factory 인터페이스
     */
-    desc.BufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    ComPtr<IWICImagingFactory> factory;
 
     /*
-    *
+    * 실제 팩토리를 생성해서 위에 만든 포인터에 저장
+    * 나머지는 추후 더 공부
     */
-    desc.SampleDesc.Count = 1;
-
-    /*
-    * 렌더링 결과를 그려 넣을 버퍼로 사용하겠다고 지정
-    */
-    desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-
-    /*
-    * 백 버퍼의 수를 지정
-    * 백 버퍼란 그림을 그려두는 공간으로, 현재 화면과 분리해서 미리 다음 화면을 그려둔다.
-    * 만약 현재 화면에 다음 화면을 그려버리면 이전화면과 새 화면이 섞여 보일 수 있기 때문이다.
-    */
-    desc.BufferCount = 1;
-
-    /*
-    * 어느 창에 결과를 표기할지 지정
-    */
-    desc.OutputWindow = hwnd;
-
-    /*
-    * 전체화면 독점 모드가 아닌 창모드 사용
-    */
-    desc.Windowed = TRUE;
-
-    /*
-    * 표시 후 버퍼 처리 방식 지정
-    * DISCARD의 경우, 이전 내용을 유지하지 않고 다음 화면을 그리도록 한다.
-    */
-    desc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
-
-    /*
-    * swapChain, device, renderer 한번에 생성됨
-    */
-    HRESULT result = D3D11CreateDeviceAndSwapChain(
+    CoCreateInstance(
+        CLSID_WICImagingFactory, // 어떤 객체를 생성할 것인가 = ImagingFactory
         nullptr,
-        D3D_DRIVER_TYPE_HARDWARE,
-        nullptr,
-        0,
-        nullptr,
-        0,
-        D3D11_SDK_VERSION,
-        &desc,
-        renderer.swapChain.GetAddressOf(),
-        renderer.device.GetAddressOf(),
-        nullptr,
-        renderer.context.GetAddressOf()
+        CLSCTX_INPROC_SERVER,
+        IID_PPV_ARGS(factory.GetAddressOf())
     );
 
-    if (FAILED(result))
-    {
-        return -1;
-    }
+    /*
+    * 실제 이미지 파일을 해석하는 객체
+    */
+    ComPtr<IWICBitmapDecoder> decoder;
+
+    /*
+    * 실제 디코더 객체를 생성하고 위 포인터에 저장
+    * 나머지는 추후 공부
+    */
+    factory->CreateDecoderFromFilename(
+        L"man.jpg",
+        nullptr,
+        GENERIC_READ,
+        WICDecodeMetadataCacheOnLoad,
+        decoder.GetAddressOf()
+    );
+    
+    /*
+    * Decoder가 접근한 이미지의 특정 프레임에 접근하기 위한 객체
+    * GIF와 같은 이미지파일은 여러장의 이미지를 가지고 있기 때문에 어떤 이미지를 가져올 지 지정해야한다.
+    */
+    ComPtr<IWICBitmapFrameDecode> frame;
+
+    /*
+    * 0번째 이미지를 가져와서 저장
+    */
+    decoder->GetFrame(
+        0,
+        frame.GetAddressOf()
+    );
+
+    /*
+    * 가져온 이미지의 크기를 저장한다.
+    */
+    UINT width;
+    UINT height;
+
+    frame->GetSize(&width, &height);
+
+    /*
+    * 원본 이미지의 pixel format을 우리가 원하는 포맷으로 변환하는 객체
+    * 예를 들어 원본이 B G R A일때, R G B A로 순서를 변환 할 수 있다.
+    */
+    ComPtr<IWICFormatConverter> converter;
+
+    factory->CreateFormatConverter(converter.GetAddressOf());
+
+    converter->Initialize(
+        frame.Get(),
+        GUID_WICPixelFormat32bppRGBA, // 어떤 Pixel Format으로 변환할 것인가.
+        WICBitmapDitherTypeNone,
+        nullptr,
+        0.0,
+        WICBitmapPaletteTypeCustom
+    );
+
+    /*
+    * stride 는 이미지 한줄이 메모리에 차지하는 바이트 수
+    * width = 3
+    * height = 2 일때
+    * 
+    * RGBA 4바이트로 4 * 3 은 12 바이트
+    */
+    UINT stride = width * 4;
+    UINT imageSize = stride * height;
+
+    /*
+    * 픽셀을 저장할 vector
+    */
+    std::vector<BYTE> pixels(imageSize);
+
+    converter->CopyPixels(
+        nullptr, // 어느 영역에서 복사할지, null인 경우 전부 가져와라
+        stride,
+        imageSize,
+        pixels.data()
+    );
+    /*-------------------------------------여기부터 taxture 설정------------------------------*/
+    D3D11_TEXTURE2D_DESC textureDesc = {};
+
+    textureDesc.Width = width;
+    textureDesc.Height = height;
+
+    textureDesc.MipLevels = 1;
+
+    textureDesc.ArraySize = 1;
+
+    textureDesc.Format =
+        DXGI_FORMAT_R8G8B8A8_UNORM;
+
+    textureDesc.SampleDesc.Count = 1;
+    textureDesc.SampleDesc.Quality = 0;
+
+    textureDesc.Usage = D3D11_USAGE_DEFAULT;
+
+    textureDesc.BindFlags =
+        D3D11_BIND_SHADER_RESOURCE;
+
+    /*
+    * 초기 데이터
+    */
+    D3D11_SUBRESOURCE_DATA initialData = {};
+
+    initialData.pSysMem = pixels.data();
+
+    initialData.SysMemPitch = stride;
+
+    initialData.SysMemSlicePitch = 0;
+
+    ComPtr<ID3D11Texture2D> texture;
+
+    HRESULT hr = renderer.device->CreateTexture2D(
+        &textureDesc,
+        &initialData,
+        texture.GetAddressOf()
+    );
+    /*-------------------------------------여기부터 SRV 설정------------------------------*/
+
+    /*
+    * SRV (
+    */
+    ComPtr<ID3D11ShaderResourceView> textureSRV;
+
+    hr = renderer.device->CreateShaderResourceView(
+        texture.Get(),
+        nullptr,
+        textureSRV.GetAddressOf()
+    );
+
+    renderer.context->PSSetShaderResources(
+        0,
+        1,
+        textureSRV.GetAddressOf()
+    );
+    /*-------------------------------------여기부터 샘플러 설정------------------------------*/
+
+    D3D11_SAMPLER_DESC samplerDesc = {};
+
+    samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+
+    samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+
+    ComPtr<ID3D11SamplerState> samplerState;
+
+    hr = renderer.device->CreateSamplerState(
+        &samplerDesc,
+        samplerState.GetAddressOf()
+    );
+
+    renderer.context->PSSetSamplers(
+        0,
+        1,
+        samplerState.GetAddressOf()
+    );
 
     /*-------------------------------------여기부터 버텍스 버퍼 설정------------------------------*/
     /*
@@ -296,7 +370,7 @@ int WINAPI wWinMain(
     * 버텍스 색상까지 함께 들어있다.
     * 버텍스 버퍼 초기값
     */
-    Vertex vertices[] =
+   /* Vertex vertices[] =
     {
         { -0.5f,  0.5f, 0.0f,  1.0f, 0.0f, 0.0f},
         {  0.5f,  0.5f, 0.0f,  0.0f, 1.0f, 0.0f},
@@ -304,69 +378,25 @@ int WINAPI wWinMain(
         {  0.5f, -0.5f, 0.0f,  0.0f, 0.0f, 1.0f},
     };
 
-    /*
-   * 버퍼를 어떻게 만들지 설정문
-   */
-    D3D11_BUFFER_DESC bufferDesc{};
-
-    /*
-    * 정점 배열 전체를 담을 크기
-    * 배열 전체를 담을 공간을 할당
-    */
-    bufferDesc.ByteWidth = sizeof(vertices);
-
-    /*
-    * 생성할 때 데이터를 넣고, 이후에는 변경하지 않음
-    */
-    bufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
-
-    /*
-    * 정점 데이터를 사용하는 버퍼로 사용
-    */
-    bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-
-    /*
-    * 처음 넣을 데이터 지정
-    */
-    D3D11_SUBRESOURCE_DATA initialData{};
-    initialData.pSysMem = vertices;
-
-    /*
-    * 실제 버퍼를 담을 스마트 포인터
-    */
-    ComPtr<ID3D11Buffer> vertexBuffer;
-
-    /*
-    * 실제 버퍼를 생성
-    */
-    result = renderer.device->CreateBuffer(
-        &bufferDesc,    // 앞선 설정대로 버퍼를 생성
-        &initialData,   // 배열의 데이털 복사해서 넣음
-        vertexBuffer.GetAddressOf()
-    );
-
-    if (FAILED(result))
+    Vertex vertices[] =
     {
-        return -1;
-    }
-
-    /*
-    * stride: 한 정점에서 다음 정점까지의 바이트 간격
-    * offset: 버퍼의 어디서 부터 읽기 시작할지
-    * 현재 위치 + 컬러 = 24바이트, 그러므로 현재 간격은 24바이트이다.
+        // Position             // UV
+        {-0.5f,  0.5f, 0.0f,    0.0f, 0.0f}, // 왼쪽 위
+        { 0.5f,  0.5f, 0.0f,    1.0f, 0.0f}, // 오른쪽 위
+        {-0.5f, -0.5f, 0.0f,    0.0f, 1.0f}, // 왼쪽 아래
+        { 0.5f, -0.5f, 0.0f,    1.0f, 1.0f}  // 오른쪽 아래
+    };
     */
-    UINT stride = sizeof(Vertex);
-    UINT offset = 0;
 
-    ID3D11Buffer* buffer = vertexBuffer.Get();
+    Vertex vertices[] =
+    {
+        // Position              // UV
+        { 0.0f,  1.0f, 0.0f,    0.0f, 0.0f }, // 왼쪽 위
+        {  1.0f,  1.0f, 0.0f,    1.0f, 0.0f }, // 오른쪽 위
+        { 0.0f, 0.0f, 0.0f,    0.0f, 1.0f }, // 왼쪽 아래
+        {  1.0f, 0.0f, 0.0f,    1.0f, 1.0f }  // 오른쪽 아래
+    };
 
-    renderer.context->IASetVertexBuffers(
-        0,
-        1,
-        &buffer,
-        &stride,
-        &offset
-    );
 
    /*-------------------------------------여기부터 인덱스 버퍼 설정------------------------------*/
    /*
@@ -406,7 +436,7 @@ int WINAPI wWinMain(
     /*
     * 정점 안에 있는 정보 한 항목을 어떻게 읽을지 설명하는 구조체 변수
     * 위치와 색상, 두 항목이 존재하므로 배열의 크기를 2로 지정
-    */
+    
     D3D11_INPUT_ELEMENT_DESC element[2]{};
 
     // 셰이더의 지정된 이름으로 입력 전달
@@ -432,6 +462,30 @@ int WINAPI wWinMain(
     element[1].AlignedByteOffset = 12;
     element[1].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
     element[1].InstanceDataStepRate = 0;
+    */
+
+    D3D11_INPUT_ELEMENT_DESC layout[] =
+    {
+        {
+            "POSITION",
+            0,
+            DXGI_FORMAT_R32G32B32_FLOAT,
+            0,
+            0,
+            D3D11_INPUT_PER_VERTEX_DATA,
+            0
+        },
+
+        {
+            "TEXCOORD",
+            0,
+            DXGI_FORMAT_R32G32_FLOAT,
+            0,
+            12,
+            D3D11_INPUT_PER_VERTEX_DATA,
+            0
+        }
+    };
 
     ComPtr<ID3DBlob> errorMessage;
 
@@ -488,7 +542,7 @@ int WINAPI wWinMain(
     }
 
     result = renderer.device->CreateInputLayout(
-        element,
+        layout,
         2,
         renderer.vertexShaderCode->GetBufferPointer(),
         renderer.vertexShaderCode->GetBufferSize(),
@@ -511,42 +565,6 @@ int WINAPI wWinMain(
         D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST
     );
 
-    /*-------------------------------------------------------------------*/
-
-    /*
-    * GetBuffer: 이미 swapChain이 만든 버퍼를 가져오는 함수
-    */
-    result = renderer.swapChain->GetBuffer(
-        0,
-        IID_PPV_ARGS(renderer.backBuffer.GetAddressOf())
-    );
-
-    if (FAILED(result))
-    {
-        return -1;
-    }
-
-    /*
-    * RTV를 만들어달라고 요청하는 함수
-    * Get()이란 이미가지고 있는 객체 포인터를 꺼냄
-    * GetAddressOf()는 생성 결과 포인터를 써 넣을 자리를 제공
-    */
-    result = renderer.device->CreateRenderTargetView(
-        renderer.backBuffer.Get(),
-        nullptr,
-        renderer.renderTarget.GetAddressOf()
-    );
-
-    ID3D11RenderTargetView* target = renderer.renderTarget.Get();
-
-    /*
-    * OM이란 Output Merger로 렌더링 결과를 출력 대상에 기록하는 단계이다.
-    */
-    renderer.context->OMSetRenderTargets(
-        1,
-        &target,
-        nullptr
-    );
     /*-------------------------------------여기부터 버텍스 설정------------------------------*/
 
      // 버퍼 크기 지정
@@ -641,18 +659,6 @@ int WINAPI wWinMain(
     // 색상 계산은 이 픽셀 셰이더를 사용해
     renderer.context->PSSetShader(pixelShader.Get(), nullptr, 0);
 
-    // 뷰포트 생성
-    D3D11_VIEWPORT viewport{};
-    viewport.TopLeftX = 0.0f;
-    viewport.TopLeftY = 0.0f;
-    viewport.Width = 800.0f;
-    viewport.Height = 600.0f;
-    viewport.MinDepth = 0.0f;
-    viewport.MaxDepth = 1.0f;
-
-    //뷰포트 연결
-    renderer.context->RSSetViewports(1, &viewport);
-
     /*-------------------------------------여기부터 메시지 루프 설정------------------------------*/
 
     /*
@@ -725,7 +731,7 @@ int WINAPI wWinMain(
 
             // 1. 백 버퍼를 배경색으로 채움
             renderer.context->ClearRenderTargetView(
-                renderer.renderTarget.Get(),
+                renderer.renderTargetView.Get(),
                 backgroundColor
             );
 
