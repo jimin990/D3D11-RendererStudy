@@ -5,6 +5,8 @@
 #include <cstring>
 #include <vector>
 #include "Renderer.h"
+#include "VertexBuffer.h"
+#include "IndexBuffer.h"
 
 /* ComPtr을 사용하기 위한 헤더
 *  Comptr은 DirectX 객체를 관리하는 스마트 포인터이다.
@@ -370,24 +372,6 @@ int WINAPI wWinMain(
     * 버텍스 색상까지 함께 들어있다.
     * 버텍스 버퍼 초기값
     */
-   /* Vertex vertices[] =
-    {
-        { -0.5f,  0.5f, 0.0f,  1.0f, 0.0f, 0.0f},
-        {  0.5f,  0.5f, 0.0f,  0.0f, 1.0f, 0.0f},
-        { -0.5f, -0.5f, 0.0f,  0.0f, 0.0f, 1.0f},
-        {  0.5f, -0.5f, 0.0f,  0.0f, 0.0f, 1.0f},
-    };
-
-    Vertex vertices[] =
-    {
-        // Position             // UV
-        {-0.5f,  0.5f, 0.0f,    0.0f, 0.0f}, // 왼쪽 위
-        { 0.5f,  0.5f, 0.0f,    1.0f, 0.0f}, // 오른쪽 위
-        {-0.5f, -0.5f, 0.0f,    0.0f, 1.0f}, // 왼쪽 아래
-        { 0.5f, -0.5f, 0.0f,    1.0f, 1.0f}  // 오른쪽 아래
-    };
-    */
-
     Vertex vertices[] =
     {
         // Position              // UV
@@ -397,6 +381,16 @@ int WINAPI wWinMain(
         {  1.0f, 0.0f, 0.0f,    1.0f, 1.0f }  // 오른쪽 아래
     };
 
+    VertexBuffer vertexBuffer;
+
+    vertexBuffer.Create(
+        renderer.device.Get(),
+        vertices,
+        sizeof(vertices),
+        sizeof(Vertex)
+        );
+
+    vertexBuffer.Bind(renderer.context.Get());
 
    /*-------------------------------------여기부터 인덱스 버퍼 설정------------------------------*/
    /*
@@ -409,28 +403,16 @@ int WINAPI wWinMain(
         2, 1, 3
     };
 
-    D3D11_BUFFER_DESC indexBufferDesc{};
+    IndexBuffer indexBuffer;
 
-    indexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-    indexBufferDesc.ByteWidth = sizeof(indices);
-    indexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-
-    D3D11_SUBRESOURCE_DATA indexData{};
-    indexData.pSysMem = indices;
-
-    ID3D11Buffer* indexBuffer = nullptr;
-
-    renderer.device->CreateBuffer(
-        &indexBufferDesc,
-        &indexData,
-        &indexBuffer
-    );
-
-    renderer.context->IASetIndexBuffer(
-        indexBuffer,
-        DXGI_FORMAT_R32_UINT,
+    indexBuffer.Create(
+        renderer.device.Get(),
+        indices,
+        sizeof(indices),
         0
     );
+
+    indexBuffer.Bind(renderer.context.Get());
 
     /*-------------------------------------여기부터 InputLayout 설정------------------------------*/
     /*
@@ -489,7 +471,7 @@ int WINAPI wWinMain(
 
     ComPtr<ID3DBlob> errorMessage;
 
-    result = D3DCompileFromFile(
+    HRESULT result = D3DCompileFromFile(
         L"BasicShader.hlsl",          // HLSL 파일
         nullptr,
         D3D_COMPILE_STANDARD_FILE_INCLUDE,

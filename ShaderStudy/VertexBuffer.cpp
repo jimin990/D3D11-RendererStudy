@@ -1,6 +1,6 @@
 #include "VertexBuffer.h"
 
-HRESULT VertexBuffer::CreateVertexBufferCreate(
+HRESULT VertexBuffer::Create(
     ID3D11Device* device, 
     const void* vertexData, // 문법 중요
     UINT dataSize, 
@@ -39,7 +39,7 @@ HRESULT VertexBuffer::CreateVertexBufferCreate(
     HRESULT result = device->CreateBuffer(
         &bufferDesc,    // 앞선 설정대로 버퍼를 생성
         &initialData1,   // 배열의 데이털 복사해서 넣음
-        vertexBuffer.GetAddressOf()
+        Buffer.GetAddressOf()
     );
 
     if (FAILED(result))
@@ -47,23 +47,23 @@ HRESULT VertexBuffer::CreateVertexBufferCreate(
         return -1;
     }
 
-    /*
-    * stride: 한 정점에서 다음 정점까지의 바이트 간격
-    * offset: 버퍼의 어디서 부터 읽기 시작할지
-    * 현재 위치 + 컬러 = 24바이트, 그러므로 현재 간격은 24바이트이다.
-    */
-    UINT stride1 = stride;
-    UINT offset = 0;
+    this->stride = stride;
+    offset = 0;
 
-    ID3D11Buffer* buffer = vertexBuffer.Get();
+    return S_OK;
+}
+
+HRESULT VertexBuffer::Bind(ID3D11DeviceContext* context)
+{
+    ID3D11Buffer* buffer = Buffer.Get();
 
     context->IASetVertexBuffers(
         0,
         1,
         &buffer,
-        &stride1,
+        &stride,
         &offset
     );
 
-    return E_NOTIMPL;
+    return S_OK;
 }
