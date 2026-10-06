@@ -88,6 +88,54 @@ context->IASetInputLayout(inputLayout.Get());
 ```
 버퍼 안에 데이터를 어떻게 읽고, 각 값을 어떤 의미로 버텍스 셰이더에 전달할지 정의하는 규칙이다.
 
+이때 사용하는것이 Input Layout으로 버텍스를 어떻게 읽을 지 지정한다.
+
+## Input Layout
+```
+{
+    "POSITION",                     // SemanticName
+    0,                              // SemanticIndex
+    DXGI_FORMAT_R32G32B32_FLOAT,    // Format
+    0,                              // InputSlot
+    0,                              // AlignedByteOffset
+    D3D11_INPUT_PER_VERTEX_DATA,    // InputSlotClass
+    0                               // InstanceDataStepRate
+}
+```
+1. "POSITION" — SemanticName
+
+ 
+2. 0 — SemanticIndex
+같은 Semantic을 여러 개 사용할 때 구분하는 번호
+
+3. ③ DXGI_FORMAT_R32G32B32_FLOAT — Format
+버퍼에서 몇 바이트를 어떤 자료형으로 읽을지 정한다.
+
+R32  → float 1개
+G32  → float 1개
+B32  → float 1개
+= 32 × 3 = 96bit = 12byte
+
+4. 0 — InputSlot
+몇 번 Vertex Buffer에서 읽을 것인가를 지정한다.
+
+5. 0 — AlignedByteOffset
+해당 Vertex 안에서 몇 번째 바이트부터 읽을 것인가.
+```
+struct Vertex
+{
+    float x, y, z; // 12 byte
+    float u, v;    // 8 byte
+};
+```
+6. D3D11_INPUT_PER_VERTEX_DATA — InputSlotClass
+이 데이터가 정점마다 바뀌는 데이터인지, 인스턴스마다 바뀌는 데이터인지 정한다.
+
+추후 인스턴싱을 사용한다면, D3D11_INPUT_PER_INSTANCE_DATA를 사용한다.
+
+7. 마지막 0 — InstanceDataStepRate
+인스턴싱할 때 사용하는 값
+현재는 인스턴싱을 사용하지 않기 때문에 0으로 둔다.
 
 # 버텍스 버퍼란?
 버텍스 버퍼는 이름 때문에 점의 위치만을 저장하는 버퍼처럼 느껴지지만 실제로는 각 버텍스에 필요한 속성을 저장하는 버퍼로,
