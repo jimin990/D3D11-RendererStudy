@@ -415,45 +415,17 @@ int WINAPI wWinMain(
     indexBuffer.Bind(renderer.context.Get());
 
     /*-------------------------------------여기부터 InputLayout 설정------------------------------*/
-    /*
-    * 정점 안에 있는 정보 한 항목을 어떻게 읽을지 설명하는 구조체 변수
-    * 위치와 색상, 두 항목이 존재하므로 배열의 크기를 2로 지정
-    
-    D3D11_INPUT_ELEMENT_DESC element[2]{};
-
-    // 셰이더의 지정된 이름으로 입력 전달
-    element[0].SemanticName = "POSITION";
-    element[0].SemanticIndex = 0;
-
-    // 32비트 실수 3개로 읽는다.
-    element[0].Format = DXGI_FORMAT_R32G32B32_FLOAT;
-    element[0].InputSlot = 0;
-
-    // 정점의 처음부터 읽는다. 따라서 x,y,z를 읽는다.
-    element[0].AlignedByteOffset = 0;
-    element[0].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-    element[0].InstanceDataStepRate = 0;
-
-    // 셰이더의 지정된 이름으로 입력 전달
-    element[1].SemanticName = "COLOR";
-    element[1].SemanticIndex = 0;
-    element[1].Format = DXGI_FORMAT_R32G32B32_FLOAT;
-    element[1].InputSlot = 0;
-
-    // 앞선 x,y,z가 12바이트를 차지하기 때문에 그 뒤 부터 읽게 설정한다.
-    element[1].AlignedByteOffset = 12;
-    element[1].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-    element[1].InstanceDataStepRate = 0;
-    */
+    // 정점 안에 있는 정보 한 항목을 어떻게 읽을지 설명하는 구조체 변수
+    // 위치와 색상, 두 항목이 존재하므로 배열의 크기를 2로 지정
 
     D3D11_INPUT_ELEMENT_DESC layout[] =
     {
         {
-            "POSITION",
+            "POSITION",                     // 셰이더의 지정된 이름으로 입력 전달
             0,
-            DXGI_FORMAT_R32G32B32_FLOAT,
+            DXGI_FORMAT_R32G32B32_FLOAT,    // 32비트 실수 3개로 읽는다.
             0,
-            0,
+            0,                              // 정점의 처음부터 읽는다. 따라서 x,y,z를 읽는다.
             D3D11_INPUT_PER_VERTEX_DATA,
             0
         },
@@ -463,7 +435,7 @@ int WINAPI wWinMain(
             0,
             DXGI_FORMAT_R32G32_FLOAT,
             0,
-            12,
+            12,                             // 앞선 x,y,z가 12바이트를 차지하기 때문에 그 뒤 부터 읽게 설정한다.
             D3D11_INPUT_PER_VERTEX_DATA,
             0
         }
