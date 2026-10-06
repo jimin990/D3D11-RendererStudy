@@ -7,6 +7,7 @@
 #include "Renderer.h"
 #include "VertexBuffer.h"
 #include "IndexBuffer.h"
+#include "VertexShader.h"
 
 /* ComPtr을 사용하기 위한 헤더
 *  Comptr은 DirectX 객체를 관리하는 스마트 포인터이다.
@@ -441,35 +442,20 @@ int WINAPI wWinMain(
         }
     };
 
+    VertexShader vertexShader{};
+
+    vertexShader.Create(
+        renderer.device.Get(),
+        L"BasicShader.hlsl",
+        layout,
+        2
+    );
+
+    vertexShader.Bind(renderer.context.Get());
+
     ComPtr<ID3DBlob> errorMessage;
 
     HRESULT result = D3DCompileFromFile(
-        L"BasicShader.hlsl",          // HLSL 파일
-        nullptr,
-        D3D_COMPILE_STANDARD_FILE_INCLUDE,
-        "VSMain",                     // 실행 시작 함수
-        "vs_5_0",                     // Vertex Shader 5.0
-        D3DCOMPILE_DEBUG,
-        0,
-        &renderer.vertexShaderCode,
-        &errorMessage
-    );
-
-    if (FAILED(result))
-    {
-        if (errorMessage)
-        {
-            OutputDebugStringA(
-                static_cast<const char*>(
-                    errorMessage->GetBufferPointer()
-                    )
-            );
-        }
-
-        return -1;
-    }
-
-    result = D3DCompileFromFile(
         L"BasicShader.hlsl",          // HLSL 파일
         nullptr,
         D3D_COMPILE_STANDARD_FILE_INCLUDE,
@@ -483,41 +469,8 @@ int WINAPI wWinMain(
 
     if (FAILED(result))
     {
-        if (errorMessage)
-        {
-            OutputDebugStringA(
-                static_cast<const char*>(
-                    errorMessage->GetBufferPointer()
-                    )
-            );
-        }
-
-        return -1;
+        return result;
     }
-
-    result = renderer.device->CreateInputLayout(
-        layout,
-        2,
-        renderer.vertexShaderCode->GetBufferPointer(),
-        renderer.vertexShaderCode->GetBufferSize(),
-        renderer.inputLayout.GetAddressOf()
-    );
-
-    if (FAILED(result))
-    {
-        return -1;
-    }
-
-    /*
-    * 앞으로 정점데이터를 읽을 때 사용할 레이아웃 지정
-    * IA는 Input Assembler
-    */
-    renderer.context->IASetInputLayout(renderer.inputLayout.Get());
-
-    // 삼각형으로 연결하도록 지정한다.
-    renderer.context->IASetPrimitiveTopology(
-        D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST
-    );
 
     /*-------------------------------------여기부터 버텍스 설정------------------------------*/
 
@@ -554,37 +507,9 @@ int WINAPI wWinMain(
         &bufferForVS
     );
 
-    
-
     if (FAILED(result))
     {
-        if (errorMessage)
-        {
-            OutputDebugStringA(
-                static_cast<const char*>(
-                    errorMessage->GetBufferPointer()
-                    )
-            );
-        }
-
-        return -1;
-    }
-
-    /*
-    * 버텍스 셰이더 객체
-    */
-    ComPtr<ID3D11VertexShader> vertexShader;
-
-    result = renderer.device->CreateVertexShader(
-        renderer.vertexShaderCode->GetBufferPointer(),
-        renderer.vertexShaderCode->GetBufferSize(),
-        nullptr,
-        vertexShader.GetAddressOf()
-    );
-
-    if (FAILED(result))
-    {
-        return -1;
+        return result;
     }
 
     // 앞에서 사용한 오류 메시지 참조를 비움
@@ -607,8 +532,6 @@ int WINAPI wWinMain(
         return -1;
     }
 
-    // 정점 처리는 이 버텍스 셰이더를 사용해
-    renderer.context->VSSetShader(vertexShader.Get(), nullptr, 0);
 
     // 색상 계산은 이 픽셀 셰이더를 사용해
     renderer.context->PSSetShader(pixelShader.Get(), nullptr, 0);

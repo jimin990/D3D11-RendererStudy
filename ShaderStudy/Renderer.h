@@ -42,16 +42,6 @@ public:
     */
     ComPtr<ID3D11Texture2D> backBuffer;
 
-    /*
-    * 입력 레이아웃이란 버텍스 버퍼의 데이터를 어떻게 나눠 읽어서 셰이더에 전달할지 설명서이다.
-    */
-    ComPtr<ID3D11InputLayout> inputLayout;
-
-    /*
-    * 컴파일된 셰이더 코드
-    */
-    ComPtr<ID3DBlob> vertexShaderCode;
-
     ComPtr<ID3DBlob> pixelShaderCode;
 
     /*

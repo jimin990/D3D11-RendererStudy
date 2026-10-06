@@ -5,6 +5,8 @@
 
 using Microsoft::WRL::ComPtr;
 
+class ID3D11Buffer;
+
 class VertexBuffer {
 
 public:
