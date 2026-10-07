@@ -49,6 +49,9 @@ struct TransformData
     float padding[3];
 };
 
+// 버퍼 크기 지정
+TransformData transformData{};
+
 /*
 * LRESULT: 메시지 처리 결과를 반환하는 자료형
 * CALLBACK: Windows가 요구하는 함수 호출 규약
@@ -70,6 +73,16 @@ LRESULT CALLBACK WindowProc(
 
         // 창이 파괴되면 메시지 루프에 종료를 알림
         PostQuitMessage(0);
+        return 0;
+    case WM_KEYDOWN:
+        if (wParam == VK_UP)
+        {
+            transformData.scale += 0.1f;
+        }
+        else if (wParam == VK_DOWN)
+        {
+            transformData.scale -= 0.1f;
+        }
         return 0;
     }
 
@@ -465,10 +478,10 @@ int WINAPI wWinMain(
 
     pixelShader.Bind(renderer.context.Get());
 
-    /*-------------------------------------여기부터 버텍스 설정------------------------------*/
+    /*-------------------------------------여기부터 Constant 버텍스 설정------------------------------*/
 
-     // 버퍼 크기 지정
-    TransformData transformData{};
+    //// 버퍼 크기 지정
+    //TransformData transformData{};
     transformData.scale = 1.0f;
 
     D3D11_BUFFER_DESC constantDesc{};
@@ -570,6 +583,16 @@ int WINAPI wWinMain(
         }
         else
         {
+            // Constant Buffer 업데이트
+            renderer.context->UpdateSubresource(
+                constantBuffer.Get(),
+                0,
+                nullptr,
+                &transformData,
+                0,
+                0
+            );
+
             const float backgroundColor[4] =
             {
                 0.1f, 0.2f, 0.5f, 1.0f

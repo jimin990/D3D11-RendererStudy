@@ -7,6 +7,12 @@
 Texture2D texture0 : register(t0);
 SamplerState sampler0 : register(s0);
 
+cbuffer TransformBuffer : register(b0)
+{
+    float scale;
+    float3 padding;
+};
+
 struct VSInput
 {
     float3 Position : POSITION;
@@ -22,7 +28,7 @@ struct VSOutput
 VSOutput VSMain(VSInput input)
 {
     VSOutput output;
-    output.Position = float4(input.Position, 1.0f);
+    output.Position = float4(input.Position * scale, 1.0f);
     output.uv = input.uv;
     return output;
 }
