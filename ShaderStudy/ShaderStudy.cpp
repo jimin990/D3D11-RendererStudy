@@ -8,6 +8,7 @@
 #include "VertexBuffer.h"
 #include "IndexBuffer.h"
 #include "VertexShader.h"
+#include "PixelShader.h"
 
 /* ComPtr을 사용하기 위한 헤더
 *  Comptr은 DirectX 객체를 관리하는 스마트 포인터이다.
@@ -393,28 +394,6 @@ int WINAPI wWinMain(
 
     vertexBuffer.Bind(renderer.context.Get());
 
-   /*-------------------------------------여기부터 인덱스 버퍼 설정------------------------------*/
-   /*
-   * 버텍스의 인덱스 값
-   * 두개의 점이 중복되기 때문에, 삼각형을 이루는 점 index를 저장한다.
-   */
-    UINT indices[] =
-    {
-        0, 1, 2,
-        2, 1, 3
-    };
-
-    IndexBuffer indexBuffer;
-
-    indexBuffer.Create(
-        renderer.device.Get(),
-        indices,
-        sizeof(indices),
-        0
-    );
-
-    indexBuffer.Bind(renderer.context.Get());
-
     /*-------------------------------------여기부터 InputLayout 설정------------------------------*/
     // 정점 안에 있는 정보 한 항목을 어떻게 읽을지 설명하는 구조체 변수
     // 위치와 색상, 두 항목이 존재하므로 배열의 크기를 2로 지정
@@ -453,24 +432,38 @@ int WINAPI wWinMain(
 
     vertexShader.Bind(renderer.context.Get());
 
-    ComPtr<ID3DBlob> errorMessage;
+    /*-------------------------------------여기부터 인덱스 버퍼 설정------------------------------*/
+   /*
+   * 버텍스의 인덱스 값
+   * 두개의 점이 중복되기 때문에, 삼각형을 이루는 점 index를 저장한다.
+   */
+    UINT indices[] =
+    {
+        0, 1, 2,
+        2, 1, 3
+    };
 
-    HRESULT result = D3DCompileFromFile(
-        L"BasicShader.hlsl",          // HLSL 파일
-        nullptr,
-        D3D_COMPILE_STANDARD_FILE_INCLUDE,
-        "PSMain",                     // 실행 시작 함수
-        "ps_5_0",                     // Vertex Shader 5.0
-        D3DCOMPILE_DEBUG,
-        0,
-        &renderer.pixelShaderCode,
-        &errorMessage
+    IndexBuffer indexBuffer;
+
+    indexBuffer.Create(
+        renderer.device.Get(),
+        indices,
+        sizeof(indices),
+        0
     );
 
-    if (FAILED(result))
-    {
-        return result;
-    }
+    indexBuffer.Bind(renderer.context.Get());
+
+    /*-------------------------------------여기부터 픽셀 셰이더 설정------------------------------*/
+
+    PixelShader pixelShader{};
+
+    pixelShader.Create(
+        renderer.device.Get(),
+        L"BasicShader.hlsl"
+    );
+
+    pixelShader.Bind(renderer.context.Get());
 
     /*-------------------------------------여기부터 버텍스 설정------------------------------*/
 
@@ -488,7 +481,7 @@ int WINAPI wWinMain(
 
     ComPtr<ID3D11Buffer> constantBuffer;
 
-    result = renderer.device->CreateBuffer(
+    HRESULT result = renderer.device->CreateBuffer(
         &constantDesc,
         &constantInitialData,
         constantBuffer.GetAddressOf()
@@ -511,30 +504,6 @@ int WINAPI wWinMain(
     {
         return result;
     }
-
-    // 앞에서 사용한 오류 메시지 참조를 비움
-    errorMessage.Reset();
-
-    /*
-    * 픽셀 셰이더란 삼각형 안에 어떤 색으로 표현을 할지 지정
-    */
-    ComPtr<ID3D11PixelShader> pixelShader;
-
-    result = renderer.device->CreatePixelShader(
-        renderer.pixelShaderCode->GetBufferPointer(),
-        renderer.pixelShaderCode->GetBufferSize(),
-        nullptr,
-        pixelShader.GetAddressOf()
-    );
-
-    if (FAILED(result))
-    {
-        return -1;
-    }
-
-
-    // 색상 계산은 이 픽셀 셰이더를 사용해
-    renderer.context->PSSetShader(pixelShader.Get(), nullptr, 0);
 
     /*-------------------------------------여기부터 메시지 루프 설정------------------------------*/
 

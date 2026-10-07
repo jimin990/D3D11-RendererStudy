@@ -42,8 +42,6 @@ public:
     */
     ComPtr<ID3D11Texture2D> backBuffer;
 
-    ComPtr<ID3DBlob> pixelShaderCode;
-
     /*
     * RTV를 가르킬 스마트 포인터
     * RTV란 taxture를 RenderTarget으로 사용하겠다고 지정하는 View이다.
