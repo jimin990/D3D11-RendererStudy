@@ -70,7 +70,8 @@ VS (Vertex Shader):
 9. 이때 출력을 지정하는 것은 OM(Output Merger)이다.
 10. OM에게 "앞으로 출력 결과는 이 RTV(Render Target View)가 가리키는 Render Target에 기록해"라고 지정하는 것이다.
 12. 또한 RTV가 지정하는 것을 RT(Render Target) 이며, 이 값은 Taxture2D값으로 지정을 할 수 있으며, 보통은 BackBuffer을 사용한다.
----수정필요---
+13. OM은 여러 RTV를 지정할 수 있는데, 여러값이 필요한 이유는 Deffered Render와 같이 값을 나눠서 계산을 해야할때 각 값을 나눠서 저장을 해야하기 때문이다.
+14. 이때는 SV_Render0, SV_Render1 와 같이 Render Target의 인덱스 슬롯을 이용해서 값을 각 Render Target 으로 보낼 수 있다.
 
 
 ## IA (Input Assembler)
