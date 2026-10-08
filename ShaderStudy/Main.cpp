@@ -3,25 +3,18 @@
 #include <d3d11.h>
 #include <d3dcompiler.h>
 #include <cstring>
-#include <vector>
-#include "Renderer.h"
-#include "VertexBuffer.h"
-#include "IndexBuffer.h"
-#include "VertexShader.h"
-#include "PixelShader.h"
-#include "Window.h"
+#include "Renderer/Renderer.h"
+#include "Renderer/Buffer/VertexBuffer.h"
+#include "Renderer/Buffer/IndexBuffer.h"
+#include "Renderer/Shader/VertexShader.h"
+#include "Renderer/Shader/PixelShader.h"
+#include "Platform/Window.h"
+#include "Renderer/Texture/Texture.h"
 
 /* ComPtr을 사용하기 위한 헤더
 *  Comptr은 DirectX 객체를 관리하는 스마트 포인터이다.
 */
 #include <wrl/client.h>
-
-/*
-* 윈도우에서 제공하는 이미지 디코딩 라이브러리
-*/
-#include <wincodec.h>
-
-#pragma comment(lib, "windowscodecs.lib")
 
 /*
 * 링커에게 d3d11.lib 라이브러리 연결을 지시한다.
@@ -79,170 +72,20 @@ int WINAPI wWinMain(
 
     renderer.Initialize(window.GetHwnd());
 
-    /*-------------------------------------여기부터 WIC 설정------------------------------*/
-    /*
-    * WIC(Window Imaging Component)란
-    * Windows에서 제공하는 WIC관련 선언들이 들어 있는 헤더이다.
-    * WIC란 PNG, JPG 같은 이미지 파일을 읽어서 실제 픽셀 데이터로 변환하는 Windows 기능이다.
-    * PNG나 JPG는 압축된 이미지 포맷이기 때문에 압축을 해제하고, 해석하는 과정이 필요한데
-    * 이 과정을 처리해주는 기능을 제공해주는 라이브러리이다.
-    */
+    /*-------------------------------------여기부터 Texture 설정------------------------------*/
 
-    /*
-    * 우선 이 부분은 패스, WIC는 Component Object Model 기반이라 Com을 초기화한다고 기억
-    */
-    CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+    Texture texture{};
 
-    /*
-    * WIC 객체들을 만들어주는 Factory 인터페이스
-    */
-    ComPtr<IWICImagingFactory> factory;
-
-    /*
-    * 실제 팩토리를 생성해서 위에 만든 포인터에 저장
-    * 나머지는 추후 더 공부
-    */
-    CoCreateInstance(
-        CLSID_WICImagingFactory, // 어떤 객체를 생성할 것인가 = ImagingFactory
-        nullptr,
-        CLSCTX_INPROC_SERVER,
-        IID_PPV_ARGS(factory.GetAddressOf())
+    texture.LoadFromFile(
+        renderer.device.Get(),
+        L"man.jpg"
     );
 
-    /*
-    * 실제 이미지 파일을 해석하는 객체
-    */
-    ComPtr<IWICBitmapDecoder> decoder;
-
-    /*
-    * 실제 디코더 객체를 생성하고 위 포인터에 저장
-    * 나머지는 추후 공부
-    */
-    factory->CreateDecoderFromFilename(
-        L"man.jpg",
-        nullptr,
-        GENERIC_READ,
-        WICDecodeMetadataCacheOnLoad,
-        decoder.GetAddressOf()
-    );
-    
-    /*
-    * Decoder가 접근한 이미지의 특정 프레임에 접근하기 위한 객체
-    * GIF와 같은 이미지파일은 여러장의 이미지를 가지고 있기 때문에 어떤 이미지를 가져올 지 지정해야한다.
-    */
-    ComPtr<IWICBitmapFrameDecode> frame;
-
-    /*
-    * 0번째 이미지를 가져와서 저장
-    */
-    decoder->GetFrame(
-        0,
-        frame.GetAddressOf()
+    texture.Bind(
+        renderer.context.Get(),
+        0
     );
 
-    /*
-    * 가져온 이미지의 크기를 저장한다.
-    */
-    UINT width;
-    UINT height;
-
-    frame->GetSize(&width, &height);
-
-    /*
-    * 원본 이미지의 pixel format을 우리가 원하는 포맷으로 변환하는 객체
-    * 예를 들어 원본이 B G R A일때, R G B A로 순서를 변환 할 수 있다.
-    */
-    ComPtr<IWICFormatConverter> converter;
-
-    factory->CreateFormatConverter(converter.GetAddressOf());
-
-    converter->Initialize(
-        frame.Get(),
-        GUID_WICPixelFormat32bppRGBA, // 어떤 Pixel Format으로 변환할 것인가.
-        WICBitmapDitherTypeNone,
-        nullptr,
-        0.0,
-        WICBitmapPaletteTypeCustom
-    );
-
-    /*
-    * stride 는 이미지 한줄이 메모리에 차지하는 바이트 수
-    * width = 3
-    * height = 2 일때
-    * 
-    * RGBA 4바이트로 4 * 3 은 12 바이트
-    */
-    UINT stride = width * 4;
-    UINT imageSize = stride * height;
-
-    /*
-    * 픽셀을 저장할 vector
-    */
-    std::vector<BYTE> pixels(imageSize);
-
-    converter->CopyPixels(
-        nullptr, // 어느 영역에서 복사할지, null인 경우 전부 가져와라
-        stride,
-        imageSize,
-        pixels.data()
-    );
-    /*-------------------------------------여기부터 taxture 설정------------------------------*/
-    D3D11_TEXTURE2D_DESC textureDesc = {};
-
-    textureDesc.Width = width;
-    textureDesc.Height = height;
-
-    textureDesc.MipLevels = 1;
-
-    textureDesc.ArraySize = 1;
-
-    textureDesc.Format =
-        DXGI_FORMAT_R8G8B8A8_UNORM;
-
-    textureDesc.SampleDesc.Count = 1;
-    textureDesc.SampleDesc.Quality = 0;
-
-    textureDesc.Usage = D3D11_USAGE_DEFAULT;
-
-    textureDesc.BindFlags =
-        D3D11_BIND_SHADER_RESOURCE;
-
-    /*
-    * 초기 데이터
-    */
-    D3D11_SUBRESOURCE_DATA initialData = {};
-
-    initialData.pSysMem = pixels.data();
-
-    initialData.SysMemPitch = stride;
-
-    initialData.SysMemSlicePitch = 0;
-
-    ComPtr<ID3D11Texture2D> texture;
-
-    HRESULT hr = renderer.device->CreateTexture2D(
-        &textureDesc,
-        &initialData,
-        texture.GetAddressOf()
-    );
-    /*-------------------------------------여기부터 SRV 설정------------------------------*/
-
-    /*
-    * SRV (
-    */
-    ComPtr<ID3D11ShaderResourceView> textureSRV;
-
-    hr = renderer.device->CreateShaderResourceView(
-        texture.Get(),
-        nullptr,
-        textureSRV.GetAddressOf()
-    );
-
-    renderer.context->PSSetShaderResources(
-        0,
-        1,
-        textureSRV.GetAddressOf()
-    );
     /*-------------------------------------여기부터 샘플러 설정------------------------------*/
 
     D3D11_SAMPLER_DESC samplerDesc = {};
@@ -255,7 +98,7 @@ int WINAPI wWinMain(
 
     ComPtr<ID3D11SamplerState> samplerState;
 
-    hr = renderer.device->CreateSamplerState(
+    HRESULT hr = renderer.device->CreateSamplerState(
         &samplerDesc,
         samplerState.GetAddressOf()
     );
@@ -282,7 +125,7 @@ int WINAPI wWinMain(
         {  1.0f, 0.0f, 0.0f,    1.0f, 1.0f }  // 오른쪽 아래
     };
 
-    VertexBuffer vertexBuffer;
+    VertexBuffer vertexBuffer{};
 
     vertexBuffer.Create(
         renderer.device.Get(),
@@ -324,7 +167,7 @@ int WINAPI wWinMain(
 
     vertexShader.Create(
         renderer.device.Get(),
-        L"BasicShader.hlsl",
+        L"Shaders/BasicShader.hlsl",
         layout,
         2
     );
@@ -359,7 +202,7 @@ int WINAPI wWinMain(
 
     pixelShader.Create(
         renderer.device.Get(),
-        L"BasicShader.hlsl"
+        L"Shaders/BasicShader.hlsl"
     );
 
     pixelShader.Bind(renderer.context.Get());

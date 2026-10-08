@@ -124,26 +124,28 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="IndexBuffer.cpp" />
-    <ClCompile Include="PixelShader.cpp" />
-    <ClCompile Include="Renderer.cpp" />
+    <ClCompile Include="Renderer\Buffer\IndexBuffer.cpp" />
+    <ClCompile Include="Renderer\Shader\PixelShader.cpp" />
+    <ClCompile Include="Renderer\Renderer.cpp" />
     <ClCompile Include="Main.cpp" />
-    <ClCompile Include="VertexBuffer.cpp" />
-    <ClCompile Include="VertexShader.cpp" />
-    <ClCompile Include="Window.cpp" />
+    <ClCompile Include="Renderer\Texture\Texture.cpp" />
+    <ClCompile Include="Renderer\Buffer\VertexBuffer.cpp" />
+    <ClCompile Include="Renderer\Shader\VertexShader.cpp" />
+    <ClCompile Include="Platform\Window.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="BasicShader.hlsl">
+    <FxCompile Include="Shaders\BasicShader.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="IndexBuffer.h" />
-    <ClInclude Include="PixelShader.h" />
-    <ClInclude Include="Renderer.h" />
-    <ClInclude Include="VertexBuffer.h" />
-    <ClInclude Include="VertexShader.h" />
-    <ClInclude Include="Window.h" />
+    <ClInclude Include="Renderer\Buffer\IndexBuffer.h" />
+    <ClInclude Include="Renderer\Shader\PixelShader.h" />
+    <ClInclude Include="Renderer\Renderer.h" />
+    <ClInclude Include="Renderer\Texture\Texture.h" />
+    <ClInclude Include="Renderer\Buffer\VertexBuffer.h" />
+    <ClInclude Include="Renderer\Shader\VertexShader.h" />
+    <ClInclude Include="Platform\Window.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

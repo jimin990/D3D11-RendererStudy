@@ -1,5 +1,7 @@
 #include "VertexBuffer.h"
 
+#pragma comment(lib, "d3d11.lib")
+
 HRESULT VertexBuffer::Create(
     ID3D11Device* device, 
     const void* vertexData, // 문법 중요
