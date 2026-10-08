@@ -3,6 +3,7 @@
 #include <d3d11.h>
 #include <d3dcompiler.h>
 #include <cstring>
+#include <DirectXMath.h>
 #include "Renderer/Renderer.h"
 #include "Renderer/Buffer/VertexBuffer.h"
 #include "Renderer/Buffer/IndexBuffer.h"
@@ -26,11 +27,24 @@
 
 using Microsoft::WRL::ComPtr;
 
+/*
 struct Vertex
 {
     float x, y, z; // 위치
     //float r, g, b; // 색
     float u, v; // uv로 변경
+};
+*/
+
+using namespace DirectX;
+
+/*
+* XMFLOAT3는 DirectX에서 행렬 계산에 적합하게 float3형을 저장하도록 만들어놓은 자료형이다.
+*/
+struct Vertex
+{
+    XMFLOAT3 position;
+    XMFLOAT2 uv;
 };
 
 /*
@@ -56,8 +70,8 @@ int WINAPI wWinMain(
 
     if (!window.Create(
         instance,
-        600,
-        800,
+        1000,
+        1000,
         L"렌더러"
     ))
     {
@@ -115,7 +129,6 @@ int WINAPI wWinMain(
     * 버텍스 4개로 변경, 점 3개씩 삼각형을 이룬다.
     * 버텍스 색상까지 함께 들어있다.
     * 버텍스 버퍼 초기값
-    */
     Vertex vertices[] =
     {
         // Position              // UV
@@ -123,6 +136,20 @@ int WINAPI wWinMain(
         {  1.0f,  1.0f, 0.0f,    1.0f, 0.0f }, // 오른쪽 위
         { 0.0f, 0.0f, 0.0f,    0.0f, 1.0f }, // 왼쪽 아래
         {  1.0f, 0.0f, 0.0f,    1.0f, 1.0f }  // 오른쪽 아래
+    };
+    */
+
+    Vertex vertices[] =
+    {
+        {{-0.5f, -0.5f, -0.5f}}, // 0
+        {{-0.5f,  0.5f, -0.5f}}, // 1
+        {{ 0.5f,  0.5f, -0.5f}}, // 2
+        {{ 0.5f, -0.5f, -0.5f}}, // 3
+
+        {{-0.5f, -0.5f,  0.5f}}, // 4
+        {{-0.5f,  0.5f,  0.5f}}, // 5
+        {{ 0.5f,  0.5f,  0.5f}}, // 6
+        {{ 0.5f, -0.5f,  0.5f}}  // 7
     };
 
     VertexBuffer vertexBuffer{};
@@ -137,9 +164,9 @@ int WINAPI wWinMain(
     vertexBuffer.Bind(renderer.context.Get());
 
     /*-------------------------------------여기부터 InputLayout 설정------------------------------*/
+    
     // 정점 안에 있는 정보 한 항목을 어떻게 읽을지 설명하는 구조체 변수
     // 위치와 색상, 두 항목이 존재하므로 배열의 크기를 2로 지정
-
     D3D11_INPUT_ELEMENT_DESC layout[] =
     {
         {
@@ -178,11 +205,43 @@ int WINAPI wWinMain(
    /*
    * 버텍스의 인덱스 값
    * 두개의 점이 중복되기 때문에, 삼각형을 이루는 점 index를 저장한다.
-   */
+   
     UINT indices[] =
     {
         0, 1, 2,
         2, 1, 3
+    };
+    */
+
+    /*
+    * 시계 방향       → 앞면 또는 뒷면
+    * 반시계 방향     → 반대쪽 면
+    */
+    UINT indices[] =
+    {
+        // 앞면 (-Z)
+        0, 1, 2,
+        0, 2, 3,
+
+        // 뒷면 (+Z)
+        4, 6, 5,
+        4, 7, 6,
+
+        // 왼쪽
+        4, 5, 1,
+        4, 1, 0,
+
+        // 오른쪽
+        3, 2, 6,
+        3, 6, 7,
+
+        // 위쪽
+        1, 5, 6,
+        1, 6, 2,
+
+        // 아래쪽
+        4, 0, 3,
+        4, 3, 7
     };
 
     IndexBuffer indexBuffer;
@@ -289,7 +348,7 @@ int WINAPI wWinMain(
         */
         //context->Draw(6, 0);
 
-        renderer.context->DrawIndexed(6, 0, 0);
+        renderer.context->DrawIndexed(36, 0, 0);
         renderer.swapChain->Present(1, 0);
     }
 
