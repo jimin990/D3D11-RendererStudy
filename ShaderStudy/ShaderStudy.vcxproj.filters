@@ -13,45 +13,68 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Source Files\Renderer">
+      <UniqueIdentifier>{003776cb-061d-4f52-b54d-5171e78e5e4d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Renderer\Buffers">
+      <UniqueIdentifier>{7d9f216d-c236-41e8-8b06-95a50e6e1e5c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Renderer\Shaders">
+      <UniqueIdentifier>{4c49ade6-32c0-44e1-96e8-8d9e753326b7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders">
+      <UniqueIdentifier>{e88777f0-580d-4df3-b415-9421480bf3f7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Platform">
+      <UniqueIdentifier>{ac61b27e-9837-479e-a290-6002787b1312}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="ShaderStudy.cpp">
+    <ClCompile Include="Main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Renderer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="VertexBuffer.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="IndexBuffer.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Renderer\Buffers</Filter>
     </ClCompile>
-    <ClCompile Include="VertexShader.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="VertexBuffer.cpp">
+      <Filter>Source Files\Renderer\Buffers</Filter>
     </ClCompile>
     <ClCompile Include="PixelShader.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Renderer\Shaders</Filter>
+    </ClCompile>
+    <ClCompile Include="VertexShader.cpp">
+      <Filter>Source Files\Renderer\Shaders</Filter>
+    </ClCompile>
+    <ClCompile Include="Window.cpp">
+      <Filter>Source Files\Platform</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="BasicShader.hlsl" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="PixelShader.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Renderer.h">
-      <Filter>Header Files</Filter>
+      <Filter>Source Files\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="VertexBuffer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="VertexShader.h">
-      <Filter>Header Files</Filter>
+      <Filter>Source Files\Renderer\Buffers</Filter>
     </ClInclude>
     <ClInclude Include="IndexBuffer.h">
-      <Filter>Header Files</Filter>
+      <Filter>Source Files\Renderer\Buffers</Filter>
     </ClInclude>
+    <ClInclude Include="VertexShader.h">
+      <Filter>Source Files\Renderer\Shaders</Filter>
+    </ClInclude>
+    <ClInclude Include="PixelShader.h">
+      <Filter>Source Files\Renderer\Shaders</Filter>
+    </ClInclude>
+    <ClInclude Include="Window.h">
+      <Filter>Source Files\Platform</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="BasicShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>
