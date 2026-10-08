@@ -54,9 +54,24 @@ D3D11의 렌더링 파이프라인을 핵심 부분은 아래와 같은 순서�
 IA → VS → Rasterizer → PS → OM
 ```
 
-IA (Input Assembler): 렌더링 파이프라인의 입력 조립 단계
+IA (Input Assembler) 렌더링 파이프라인의 입력 조립 단계
 VS (Vertex Shader): 
 
+렌더링 과정을 간단하게 요약하면, 
+
+1. IA가 읽어올 버텍스 버퍼를 지정한다.
+2. 이때 Input layout을 통해서 이 버퍼를 어떻게 읽을지 지정한다.
+3. hsls파일을 컴파일하고, 바이트 코드로 변환된 값을 버텍스 셰이더로 지정을 한다.
+4. 버텍스 버퍼로 부터 IA가 값을 읽어서 버텍스 셰이더의 입력값으로 넣는다.
+5. 만약 constant buffer와 같은 값이 있다면 register()는 GPU 파이프라인의 어느 리소스 슬롯을 사용할 것인가를 지정하고 입력값으로 넣어준다.
+6. 버텍스 셰이더에서 SV_POSITION 시스템 시맨틱으로 지정된 반환값은 레스터라이저로 전달되어, 이 위치를 이용해 삼각형을 만들고 어떤 픽셀들이 삼각형에 포함되는지 결정한다.
+7. 보간된 값은 픽셀 셰이더로 이동하여 입력 값으로 들어간다.
+8. 픽셀 셰이더에서 SV_TARGET 시맨틱으로 지정하여, 타겟으로 지정된 버퍼로 출력이 작성된다.
+9. 이때 출력을 지정하는 것은 OM(Output Merger)이다.
+10. OM에게 "앞으로 출력 결과는 이 RTV(Render Target View)가 가리키는 Render Target에 기록해"라고 지정하는 것이다.
+12. 또한 RTV가 지정하는 것을 RT(Render Target) 이며, 이 값은 Taxture2D값으로 지정을 할 수 있으며, 보통은 BackBuffer을 사용한다.
+13. OM은 여러 RTV를 지정할 수 있는데, 여러값이 필요한 이유는 Deffered Render와 같이 값을 나눠서 계산을 해야할때 각 값을 나눠서 저장을 해야하기 때문이다.
+14. 이때는 SV_Render0, SV_Render1 와 같이 Render Target의 인덱스 슬롯을 이용해서 값을 각 Render Target 으로 보낼 수 있다.
 
 
 ## IA (Input Assembler)
@@ -90,7 +105,7 @@ context->IASetInputLayout(inputLayout.Get());
 
 이때 사용하는것이 Input Layout으로 버텍스를 어떻게 읽을 지 지정한다.
 
-## Input Layout
+### Input Layout
 ```
 {
     "POSITION",                     // SemanticName
@@ -104,18 +119,17 @@ context->IASetInputLayout(inputLayout.Get());
 ```
 1. "POSITION" — SemanticName
 
- 
 2. 0 — SemanticIndex
 같은 Semantic을 여러 개 사용할 때 구분하는 번호
 
 3. ③ DXGI_FORMAT_R32G32B32_FLOAT — Format
 버퍼에서 몇 바이트를 어떤 자료형으로 읽을지 정한다.
-
+```
 R32  → float 1개
 G32  → float 1개
 B32  → float 1개
 = 32 × 3 = 96bit = 12byte
-
+```
 4. 0 — InputSlot
 몇 번 Vertex Buffer에서 읽을 것인가를 지정한다.
 
@@ -236,3 +250,36 @@ context->OMSetRenderTargets(
 앞으로 렌더링 결과를 이 RTV가 가리키는 Texture에 넣으라는 코드.
 
 이때도 아직 실제 사용자가 보는 화면에 보여지고 있는 상태가 아니다.
+
+## Constant Buffer
+Constant Buffer는 CPU값을 GPU로 전달하기 위해 사용되는 Buffer이다.
+
+이때 중요한것은 전달한 값과 HLSL에서 사용할 값을 매칭하는 것이다.
+```
+struct TransformData
+{
+    float scale;
+    float padding[3];
+};
+```
+로 C++ 코드로 전달할 값을 작성했다면
+```
+cbuffer TransformBuffer : register(b0)
+{
+    float scale;
+    float3 padding;
+};
+```
+이렇게 사용할 값도 같은 값으로 매칭을 해줘야한다.
+
+cbuffer은 constant buffer에서 이 값으로 선언을 한다는 의미이다.
+
+*추가적으로 constant buffer의 값을 c++ 코드에서 수정했더라도, 이 값이 렌더링에서 적용이 바로 되지 않는다.
+
+그 이유는 CPU와 GPU의 메모리 값이 다르기 때문이다.
+
+처음 초기화를 했을 때, CPU값이 GPU로 이동이 되고 아무리 C++값, 즉 CPU에서 수정을 한다고 해도
+
+이 값은 GPU로 전달이 되지 않는다.
+
+그렇기 때문에 update를 통해서 이 값을 다시 GPU로 전달해야 렌더링에 적용이 된다.
