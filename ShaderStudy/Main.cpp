@@ -18,6 +18,13 @@
 #include <wrl/client.h>
 
 /*
+* FBX Import를 위한 Assimp 라이브러리 추가
+*/
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
+
+/*
 * 링커에게 d3d11.lib 라이브러리 연결을 지시한다.
 * Direct3D 11 DLL의 함수를 사용하도록 링크를 연결
 */
@@ -60,6 +67,49 @@ struct TransformData
 // 버퍼 크기 지정
 TransformData transformData{};
 
+struct TransformData1
+{
+    XMFLOAT4X4 worldViewProjection;
+};
+
+void LoadFBX(const char* filePath)
+{
+    Assimp::Importer importer;
+
+    const aiScene* scene = importer.ReadFile(
+        filePath,
+        aiProcess_Triangulate |
+        aiProcess_ConvertToLeftHanded
+    );
+
+    wchar_t text[128]{};
+
+    if (!scene || !scene->mRootNode)
+    {
+        swprintf_s(text, L"FBX Load Failed\n");
+        OutputDebugStringW(text);
+
+        return;
+    }
+
+    swprintf_s(text, L"FBX Load Success!\n");
+
+    //swprintf_s(text, L"Mesh Count: %d\n", scene->mNumMeshes);
+
+    OutputDebugStringW(text);
+
+    for (unsigned int i = 0; i < scene->mNumMeshes; ++i)
+    {
+        const aiMesh* mesh = scene->mMeshes[i];
+
+        std::cout << "Mesh " << i << std::endl;
+        std::cout << "Vertices: "
+            << mesh->mNumVertices << std::endl;
+        std::cout << "Faces: "
+            << mesh->mNumFaces << std::endl;
+    }
+}
+
 int WINAPI wWinMain(
     HINSTANCE instance,
     HINSTANCE previousInstance,
@@ -79,6 +129,9 @@ int WINAPI wWinMain(
     }
 
     /*-------------------------------------여기부터 렌더링 파이프 라인------------------------------*/
+
+    /*-------------------------------------FBX 파일 Importer 파이프 라인------------------------------*/
+    LoadFBX("C:/Users/kimjimin/Desktop/kimjimin/HollowBody.fbx");
 
     /*-------------------------------------IA(Input Assembler) 과정------------------------------*/
 
@@ -299,6 +352,88 @@ int WINAPI wWinMain(
         0,
         1,
         &bufferForVS
+    );
+
+    if (FAILED(result))
+    {
+        return result;
+    }
+
+    /*-------------------------------------여기부터 View (카메라) Constant 버텍스 설정------------------------------*/
+
+    XMMATRIX world = XMMatrixIdentity();
+
+    XMVECTOR cameraPosition = XMVectorSet(
+        0.0f, 0.0f, -5.0f, 1.0f
+    );
+
+    float yaw = XMConvertToRadians(20.0f);
+    float pitch = XMConvertToRadians(00.0f);
+
+    XMVECTOR forward = XMVectorSet(
+        cosf(pitch) * sinf(yaw),
+        sinf(pitch),
+        cosf(pitch) * cosf(yaw),
+        0.0f
+    );
+
+    XMVECTOR cameraTarget =
+        cameraPosition + forward;
+
+    XMVECTOR cameraUp = XMVectorSet(
+        0.0f, 1.0f, 0.0f, 0.0f
+    );
+
+    XMMATRIX view = XMMatrixLookAtLH(
+        cameraPosition,
+        cameraTarget,
+        cameraUp
+    );
+
+    XMMATRIX projection = XMMatrixPerspectiveFovLH(
+        XMConvertToRadians(60.0f), // 세로 시야각
+        800.0f / 600.0f,          // 화면 비율
+        0.1f,                     // 카메라에 표시되는 최소 거리
+        100.0f                    // 최대 거리
+    );
+
+    XMMATRIX worldViewProjection =
+        world * view * projection;
+
+    TransformData1 transform1{};
+
+    XMStoreFloat4x4(
+        &transform1.worldViewProjection,
+        XMMatrixTranspose(world* view* projection)
+    );
+
+    D3D11_BUFFER_DESC constantDesc1{};
+    constantDesc1.ByteWidth = sizeof(TransformData1);
+    constantDesc1.Usage = D3D11_USAGE_DEFAULT;
+    constantDesc1.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+
+    D3D11_SUBRESOURCE_DATA constantInitialData1{};
+    constantInitialData1.pSysMem = &transform1;
+
+    ComPtr<ID3D11Buffer> constantBuffer1;
+
+    result = renderer.device->CreateBuffer(
+        &constantDesc1,
+        &constantInitialData1,
+        constantBuffer1.GetAddressOf()
+    );
+
+    if (FAILED(result))
+    {
+        return -1;
+    }
+
+    ID3D11Buffer* bufferForVS1 = constantBuffer1.Get();
+
+    renderer.context->VSSetConstantBuffers(
+        1,
+        1,
+        &bufferForVS1
     );
 
     if (FAILED(result))

@@ -13,6 +13,11 @@ cbuffer TransformBuffer : register(b0)
     float3 padding;
 };
 
+cbuffer TransformBuffer1 : register(b1)
+{
+    matrix worldViewProjection;
+};
+
 struct VSInput
 {
     float3 Position : POSITION;
@@ -28,8 +33,10 @@ struct VSOutput
 VSOutput VSMain(VSInput input)
 {
     VSOutput output;
-    output.Position = float4(input.Position * scale, 1.0f);
+    //output.Position = float4(input.Position * scale, 1.0f);
+    output.Position = mul(float4(input.Position, 1.0f), worldViewProjection);
     output.uv = input.uv;
+ 
     return output;
 }
 
